@@ -1,45 +1,55 @@
 # -*- coding: utf-8 -*-
 """
-손글씨 숫자 인식 GUI 프로그램
+손글씨 숫자 인식기 (MNIST CNN)
 
-마우스로 캔버스에 숫자를 직접 그린 뒤 '인식' 버튼을 누르면,
-학습된 CNN 모델(mnist_cnn.pt)이 어떤 숫자인지 예측해서 보여준다.
+검은 캔버스에 마우스로 숫자를 쓰고 마우스를 떼면 자동으로 인식한다.
+인식 결과, 확신도, 숫자별 확률, 모델에 실제로 들어가는 28x28 입력 이미지를 함께 보여준다.
 """
 
 import tkinter as tk
 from tkinter import messagebox
 
-import numpy as np
 import torch
 import torch.nn.functional as F
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
 
 from model import MnistCNN
+from preprocess import 모델_입력_이미지_만들기, 텐서로_변환
 
 가중치_경로 = "mnist_cnn.pt"
-캔버스_크기 = 280          # 화면에 보여줄 캔버스 크기 (그리기 편하도록 확대)
-모델_입력_크기 = 28        # 실제 모델에 입력할 이미지 크기 (MNIST 표준 크기)
-펜_굵기 = 18
+캔버스_크기 = 280
+펜_굵기 = 22
+미리보기_크기 = 112       # 28x28 모델 입력을 4배로 확대해서 보여준다
 
-# MNIST 학습 때 사용한 것과 동일한 정규화 값
-정규화_평균 = 0.1307
-정규화_표준편차 = 0.3081
+글꼴 = "맑은 고딕"
+배경색 = "#f0f0f0"
+강조색 = "#2563eb"
+막대_기본색 = "#d1d5db"
+막대_바탕색 = "#ffffff"
+글자색 = "#111827"
+보조_글자색 = "#6b7280"
+
+막대_너비 = 190
+막대_높이 = 14
 
 
 class 손글씨_인식_앱:
     def __init__(self, 루트):
         self.루트 = 루트
-        self.루트.title("손글씨 숫자 인식")
+        self.루트.title("손글씨 숫자 인식기 (MNIST CNN)")
+        self.루트.configure(bg=배경색)
+        self.루트.resizable(False, False)
 
         self.장치 = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.모델 = self._모델_불러오기()
 
-        # 실제 예측에 사용할 그림은 PIL 이미지에 그대로 그려서 보관한다
-        # (흰 배경 위에 검은색 글씨: 사람이 종이에 쓰는 방식과 동일)
-        self.그림 = Image.new("L", (캔버스_크기, 캔버스_크기), color=255)
+        # 실제 예측에 쓰는 그림: 검은 배경에 흰 글씨 (MNIST와 같은 방향)
+        self.그림 = Image.new("L", (캔버스_크기, 캔버스_크기), color=0)
         self.그리기_도구 = ImageDraw.Draw(self.그림)
+        self.이전_좌표 = None
 
         self._화면_구성()
+        self._결과_초기화()
 
     def _모델_불러오기(self):
         모델 = MnistCNN().to(self.장치)
@@ -55,68 +65,130 @@ class 손글씨_인식_앱:
         return 모델
 
     def _화면_구성(self):
-        self.캔버스 = tk.Canvas(
-            self.루트, width=캔버스_크기, height=캔버스_크기, bg="white", cursor="cross"
-        )
-        self.캔버스.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
+        왼쪽 = tk.Frame(self.루트, bg=배경색)
+        왼쪽.grid(row=0, column=0, padx=(16, 8), pady=16, sticky="n")
+        오른쪽 = tk.Frame(self.루트, bg=배경색)
+        오른쪽.grid(row=0, column=1, padx=(8, 16), pady=16, sticky="n")
+
+        # ---- 왼쪽: 그리기 영역 ----
+        tk.Label(왼쪽, text="여기에 숫자를 써 주세요 (0~9)", font=(글꼴, 11, "bold"),
+                 bg=배경색, fg=글자색).pack(anchor="w", pady=(0, 6))
+
+        self.캔버스 = tk.Canvas(왼쪽, width=캔버스_크기, height=캔버스_크기, bg="black",
+                              highlightthickness=1, highlightbackground="#9ca3af", cursor="cross")
+        self.캔버스.pack()
         self.캔버스.bind("<B1-Motion>", self._그리는_중)
         self.캔버스.bind("<ButtonRelease-1>", self._펜_떼기)
 
-        self.이전_좌표 = None
+        버튼_줄 = tk.Frame(왼쪽, bg=배경색)
+        버튼_줄.pack(fill="x", pady=(10, 0))
+        tk.Button(버튼_줄, text="인식하기", width=12, command=self._예측하기).pack(side="left")
+        tk.Button(버튼_줄, text="지우기", width=12, command=self._캔버스_지우기).pack(side="right")
 
-        self.결과_라벨 = tk.Label(self.루트, text="숫자를 그리고 [인식] 버튼을 누르세요", font=("맑은 고딕", 14))
-        self.결과_라벨.grid(row=1, column=0, columnspan=3, pady=(0, 10))
+        tk.Label(왼쪽, text="마우스를 떼면 자동으로 인식합니다.", font=(글꼴, 9),
+                 bg=배경색, fg=보조_글자색).pack(anchor="w", pady=(8, 0))
 
-        인식_버튼 = tk.Button(self.루트, text="인식", width=10, command=self._예측하기)
-        인식_버튼.grid(row=2, column=0, padx=5, pady=(0, 10))
+        # ---- 오른쪽: 결과 영역 ----
+        tk.Label(오른쪽, text="인식 결과", font=(글꼴, 11, "bold"),
+                 bg=배경색, fg=글자색).pack(anchor="w")
 
-        지우기_버튼 = tk.Button(self.루트, text="지우기", width=10, command=self._캔버스_지우기)
-        지우기_버튼.grid(row=2, column=1, padx=5, pady=(0, 10))
+        self.결과_숫자 = tk.Label(오른쪽, text="-", font=(글꼴, 56, "bold"), bg=배경색, fg="#1e293b")
+        self.결과_숫자.pack(pady=(0, 0))
+        self.확신도_라벨 = tk.Label(오른쪽, text="확신도: -", font=(글꼴, 10), bg=배경색, fg=보조_글자색)
+        self.확신도_라벨.pack()
 
-        종료_버튼 = tk.Button(self.루트, text="종료", width=10, command=self.루트.destroy)
-        종료_버튼.grid(row=2, column=2, padx=5, pady=(0, 10))
+        tk.Label(오른쪽, text="숫자별 확률", font=(글꼴, 11, "bold"),
+                 bg=배경색, fg=글자색).pack(anchor="w", pady=(12, 4))
 
+        막대_틀 = tk.Frame(오른쪽, bg=막대_바탕색, highlightthickness=1, highlightbackground="#d1d5db")
+        막대_틀.pack(fill="x")
+        self.막대_캔버스 = []
+        self.막대_퍼센트 = []
+        for 숫자 in range(10):
+            줄 = tk.Frame(막대_틀, bg=막대_바탕색)
+            줄.pack(fill="x", padx=6, pady=2)
+            tk.Label(줄, text=str(숫자), width=2, anchor="w", font=(글꼴, 9),
+                     bg=막대_바탕색, fg=글자색).pack(side="left")
+            막대 = tk.Canvas(줄, width=막대_너비, height=막대_높이, bg="#eef0f3", highlightthickness=0)
+            막대.pack(side="left", padx=4)
+            퍼센트 = tk.Label(줄, text="0.0%", width=6, anchor="e", font=(글꼴, 9),
+                            bg=막대_바탕색, fg=보조_글자색)
+            퍼센트.pack(side="left")
+            self.막대_캔버스.append(막대)
+            self.막대_퍼센트.append(퍼센트)
+
+        tk.Label(오른쪽, text="모델 입력 (28x28)", font=(글꼴, 11, "bold"),
+                 bg=배경색, fg=글자색).pack(anchor="w", pady=(12, 4))
+        self.미리보기_캔버스 = tk.Canvas(오른쪽, width=미리보기_크기, height=미리보기_크기, bg="black",
+                                    highlightthickness=0)
+        self.미리보기_캔버스.pack(anchor="w")
+        self.미리보기_사진 = None
+
+    # ---------- 그리기 ----------
     def _그리는_중(self, 이벤트):
         x, y = 이벤트.x, 이벤트.y
-        if self.이전_좌표 is not None:
-            x0, y0 = self.이전_좌표
-            # 화면 캔버스에 선 그리기 (사용자에게 보이는 부분)
-            self.캔버스.create_line(x0, y0, x, y, width=펜_굵기, fill="black",
-                                   capstyle=tk.ROUND, smooth=True)
-            # 실제 예측에 쓰일 PIL 이미지에도 동일하게 선 그리기
-            self.그리기_도구.line([x0, y0, x, y], fill=0, width=펜_굵기)
+        if self.이전_좌표 is None:
+            self.이전_좌표 = (x, y)
+        x0, y0 = self.이전_좌표
+        self.캔버스.create_line(x0, y0, x, y, width=펜_굵기, fill="white",
+                              capstyle=tk.ROUND, smooth=True)
+        self.그리기_도구.line([x0, y0, x, y], fill=255, width=펜_굵기)
+        반지름 = 펜_굵기 / 2
+        self.그리기_도구.ellipse([x - 반지름, y - 반지름, x + 반지름, y + 반지름], fill=255)
         self.이전_좌표 = (x, y)
 
     def _펜_떼기(self, 이벤트):
         self.이전_좌표 = None
+        self._예측하기()
 
     def _캔버스_지우기(self):
         self.캔버스.delete("all")
-        self.그림 = Image.new("L", (캔버스_크기, 캔버스_크기), color=255)
+        self.그림 = Image.new("L", (캔버스_크기, 캔버스_크기), color=0)
         self.그리기_도구 = ImageDraw.Draw(self.그림)
-        self.결과_라벨.config(text="숫자를 그리고 [인식] 버튼을 누르세요")
+        self.이전_좌표 = None
+        self._결과_초기화()
 
-    def _전처리(self):
-        """캔버스에 그린 이미지를 모델 입력 형식(1x1x28x28 정규화 텐서)으로 변환"""
-        # 28x28로 축소
-        축소_이미지 = self.그림.resize((모델_입력_크기, 모델_입력_크기), Image.LANCZOS)
-        # MNIST는 검은 배경(0)에 흰색 숫자(255)이므로, 흰 배경/검은 글씨인 캔버스 이미지를 반전
-        픽셀_배열 = 255 - np.array(축소_이미지, dtype=np.float32)
-
-        텐서 = torch.from_numpy(픽셀_배열)
-        텐서 = 텐서.view(1, 1, 모델_입력_크기, 모델_입력_크기) / 255.0
-        텐서 = (텐서 - 정규화_평균) / 정규화_표준편차
-        return 텐서.to(self.장치)
-
+    # ---------- 예측 ----------
     def _예측하기(self):
-        입력_텐서 = self._전처리()
-        with torch.no_grad():
-            출력 = self.모델(입력_텐서)
-            확률 = F.softmax(출력, dim=1)
-            예측_숫자 = int(확률.argmax(dim=1).item())
-            신뢰도 = float(확률[0, 예측_숫자].item()) * 100
+        입력_이미지 = 모델_입력_이미지_만들기(self.그림)
+        if 입력_이미지 is None:
+            self._결과_초기화()
+            return
 
-        self.결과_라벨.config(text=f"예측 결과: {예측_숫자}  (신뢰도 {신뢰도:.1f}%)")
+        with torch.no_grad():
+            출력 = self.모델(텐서로_변환(입력_이미지).to(self.장치))
+            확률 = F.softmax(출력, dim=1)[0].cpu().tolist()
+
+        예측_숫자 = max(range(10), key=lambda i: 확률[i])
+        self._결과_표시(예측_숫자, 확률)
+        self._미리보기_표시(입력_이미지)
+
+    def _결과_표시(self, 예측_숫자, 확률):
+        self.결과_숫자.config(text=str(예측_숫자))
+        self.확신도_라벨.config(text=f"확신도: {확률[예측_숫자] * 100:.1f}%")
+        for 숫자 in range(10):
+            self._막대_그리기(숫자, 확률[숫자], 강조=(숫자 == 예측_숫자))
+
+    def _막대_그리기(self, 숫자, 비율, 강조):
+        막대 = self.막대_캔버스[숫자]
+        막대.delete("all")
+        채움_너비 = int(막대_너비 * 비율)
+        if 채움_너비 > 0:
+            막대.create_rectangle(0, 0, 채움_너비, 막대_높이, fill=강조색 if 강조 else 막대_기본색, width=0)
+        self.막대_퍼센트[숫자].config(text=f"{비율 * 100:.1f}%")
+
+    def _미리보기_표시(self, 입력_이미지):
+        확대 = 입력_이미지.resize((미리보기_크기, 미리보기_크기), Image.NEAREST)
+        self.미리보기_사진 = ImageTk.PhotoImage(확대)
+        self.미리보기_캔버스.delete("all")
+        self.미리보기_캔버스.create_image(0, 0, anchor="nw", image=self.미리보기_사진)
+
+    def _결과_초기화(self):
+        self.결과_숫자.config(text="-")
+        self.확신도_라벨.config(text="확신도: -")
+        for 숫자 in range(10):
+            self._막대_그리기(숫자, 0.0, 강조=False)
+        self.미리보기_캔버스.delete("all")
 
 
 def main():

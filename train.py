@@ -1,31 +1,54 @@
 # -*- coding: utf-8 -*-
 """MNIST 데이터셋으로 CNN 모델을 학습하고 가중치를 mnist_cnn.pt로 저장하는 스크립트"""
 
+import random
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from PIL import ImageFilter
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from model import MnistCNN
+from preprocess import 정규화_평균, 정규화_표준편차
 
 # 학습 관련 설정값
-배치_크기 = 64
-에폭_수 = 5
-학습률 = 0.001
+배치_크기 = 128
+에폭_수 = 15
+학습률 = 0.002
 가중치_저장_경로 = "mnist_cnn.pt"
+
+
+class 무작위_굵게:
+    """마우스로 그린 굵은 획에 대비하도록, 일정 확률로 글씨를 한 픽셀 두껍게 만든다"""
+
+    def __init__(self, 확률=0.4):
+        self.확률 = 확률
+
+    def __call__(self, 이미지):
+        if random.random() < self.확률:
+            return 이미지.filter(ImageFilter.MaxFilter(3))
+        return 이미지
 
 
 def 데이터로더_준비():
     """MNIST 학습/테스트 데이터셋을 내려받고 DataLoader로 변환"""
-    # MNIST의 평균/표준편차로 정규화 (일반적으로 널리 쓰이는 값)
-    변환 = transforms.Compose([
+    # 학습용: 손으로 그린 숫자의 위치·크기·기울기·굵기 차이에 강해지도록 데이터 증강
+    학습_변환 = transforms.Compose([
+        무작위_굵게(),
+        transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.15), shear=10),
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,)),
+        transforms.Normalize((정규화_평균,), (정규화_표준편차,)),
+    ])
+    # 테스트용: 증강 없이 정규화만 적용
+    테스트_변환 = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((정규화_평균,), (정규화_표준편차,)),
     ])
 
-    학습_데이터셋 = datasets.MNIST(root="./data", train=True, download=True, transform=변환)
-    테스트_데이터셋 = datasets.MNIST(root="./data", train=False, download=True, transform=변환)
+    학습_데이터셋 = datasets.MNIST(root="./data", train=True, download=True, transform=학습_변환)
+    테스트_데이터셋 = datasets.MNIST(root="./data", train=False, download=True, transform=테스트_변환)
 
     학습_로더 = DataLoader(학습_데이터셋, batch_size=배치_크기, shuffle=True)
     테스트_로더 = DataLoader(테스트_데이터셋, batch_size=배치_크기, shuffle=False)
@@ -78,10 +101,13 @@ def main():
     모델 = MnistCNN().to(장치)
     손실함수 = nn.CrossEntropyLoss()
     옵티마이저 = optim.Adam(모델.parameters(), lr=학습률)
+    # 학습이 진행될수록 학습률을 서서히 줄여 마지막에 안정적으로 수렴시킨다
+    스케줄러 = optim.lr_scheduler.CosineAnnealingLR(옵티마이저, T_max=에폭_수)
 
     for 에폭 in range(1, 에폭_수 + 1):
         print(f"\n=== 에폭 {에폭}/{에폭_수} ===")
         평균_학습_손실 = 한_에폭_학습(모델, 학습_로더, 손실함수, 옵티마이저, 장치)
+        스케줄러.step()
         테스트_손실, 테스트_정확도 = 테스트_평가(모델, 테스트_로더, 손실함수, 장치)
         print(f"에폭 {에폭} 결과 - 학습 손실: {평균_학습_손실:.4f}, "
               f"테스트 손실: {테스트_손실:.4f}, 테스트 정확도: {테스트_정확도:.2f}%")

@@ -11,7 +11,7 @@ MNIST 손글씨 숫자 인식 프로젝트. PyTorch CNN으로 MNIST를 학습하
 ## 명령어
 
 ```bash
-python train.py         # MNIST를 ./data에 내려받고 5 에폭 학습, 가중치를 mnist_cnn.pt로 저장
+python train.py         # MNIST를 ./data에 내려받고 데이터 증강으로 15 에폭 학습, 가중치를 mnist_cnn.pt로 저장
 python app.py           # 캔버스에 그린 숫자를 mnist_cnn.pt로 예측하는 tkinter GUI 실행 (mnist_cnn.pt 필요)
 ```
 
@@ -22,7 +22,8 @@ python app.py           # 캔버스에 그린 숫자를 mnist_cnn.pt로 예측�
 ## 구조
 
 - [model.py](model.py) — `MnistCNN` 네트워크 정의 (conv 1→32→64, 2×2 맥스풀 ×2, 드롭아웃, fc 64·7·7→128→10). `train.py`와 `app.py`가 모두 이 클래스를 가져다 쓰므로, 입력 1×1×28×28 / 출력 로짓 10개라는 형태가 학습과 추론 사이의 약속이다.
-- [train.py](train.py) — `torchvision.datasets.MNIST`로 `./data`에 데이터를 내려받고, Adam + CrossEntropyLoss로 `MnistCNN`을 학습하며 매 에폭마다 평가한 뒤 `model.state_dict()`를 `mnist_cnn.pt`(상대 경로, 실행할 때마다 덮어씀)로 저장한다.
-- [app.py](app.py) — tkinter 캔버스 앱. 마우스 획을 화면의 `Canvas`와 화면 밖 PIL `Image`(흰 배경, 검은 획)에 동시에 그려서, 같은 그림을 모델 입력으로 전처리한다. 예측 시 PIL 이미지를 28×28로 줄이고, 색을 반전(MNIST는 검은 배경에 흰 숫자라 사용자가 그리는 방식과 반대)한 뒤, **`train.py`와 같은 평균/표준편차**(0.1307 / 0.3081, 두 파일에 상수로 중복 정의됨)로 정규화한다. 한쪽의 정규화를 바꾸면 다른 쪽도 같이 바꿔야 한다.
+- [preprocess.py](preprocess.py) — 손글씨 이미지를 MNIST 방식으로 바꾸는 전처리(글씨 영역 자르기 → 긴 변 20px로 축소 → 28×28 중앙 배치 → 무게중심 정렬)와 정규화 상수(평균 0.1307 / 표준편차 0.3081). 캔버스 전체를 그냥 28×28로 줄이면 인식률이 크게 떨어지므로 이 전처리가 정확도의 핵심이다. `train.py`와 `app.py`가 정규화 상수를 여기서 함께 가져다 쓴다.
+- [train.py](train.py) — `torchvision.datasets.MNIST`로 `./data`에 데이터를 내려받고, Adam + CrossEntropyLoss로 `MnistCNN`을 15 에폭 학습한다. 마우스로 그린 숫자에 대비해 데이터 증강(이동·회전·크기·기울기, 획 굵게 만들기)을 쓰며, 평가는 증강 없이 한다. 학습이 끝나면 `model.state_dict()`를 `mnist_cnn.pt`(상대 경로, 실행할 때마다 덮어씀)로 저장한다.
+- [app.py](app.py) — tkinter 캔버스 앱. 검은 캔버스에 흰 펜으로 그린 획을 화면의 `Canvas`와 화면 밖 PIL `Image`에 동시에 그리고, 마우스를 떼면 `preprocess.py`로 전처리해 자동 인식한다. 인식 결과·확신도·숫자별 확률 막대·모델 입력(28×28) 미리보기를 보여준다.
 
 `mnist_cnn.pt`는 전체 모델이 아니라 `state_dict`만 담고 있으므로, 불러올 때는 먼저 `MnistCNN()`을 만든 뒤 `load_state_dict`를 호출해야 한다.
