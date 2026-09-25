@@ -12,7 +12,7 @@ Remote: https://github.com/hannah0326/Study01_MNIST (public, `master`); `index.h
 
 ```bash
 python train.py         # MNIST를 ./data에 내려받고 5 에폭 학습, 가중치를 mnist_cnn.pt로 저장
-python predict_gui.py   # 캔버스에 그린 숫자를 mnist_cnn.pt로 예측하는 tkinter GUI 실행 (mnist_cnn.pt 필요)
+python app.py           # 캔버스에 그린 숫자를 mnist_cnn.pt로 예측하는 tkinter GUI 실행 (mnist_cnn.pt 필요)
 ```
 
 No test suite or linter is configured.
@@ -21,8 +21,8 @@ On this machine, `python`/`pip` on PATH may resolve to the Windows Store stub in
 
 ## Architecture
 
-- [model.py](model.py) — `MnistCNN`: the network definition (conv 1→32→64, 2×2 maxpool ×2, dropout, fc 64·7·7→128→10). Both `train.py` and `predict_gui.py` import this class, so its input/output shape (1×1×28×28 in, 10 logits out) is the contract between training and inference.
+- [model.py](model.py) — `MnistCNN`: the network definition (conv 1→32→64, 2×2 maxpool ×2, dropout, fc 64·7·7→128→10). Both `train.py` and `app.py` import this class, so its input/output shape (1×1×28×28 in, 10 logits out) is the contract between training and inference.
 - [train.py](train.py) — downloads MNIST via `torchvision.datasets.MNIST` into `./data`, trains `MnistCNN` with Adam + CrossEntropyLoss, evaluates each epoch, and saves `model.state_dict()` to `mnist_cnn.pt` (relative path, overwritten on each run).
-- [predict_gui.py](predict_gui.py) — tkinter canvas app. Mouse strokes are drawn both on the visible `Canvas` and in parallel onto an off-screen PIL `Image` (white background, black strokes) so the same drawing can be preprocessed for the model. On predict, the PIL image is downsampled to 28×28, colors inverted (MNIST digits are white-on-black, opposite of what the user draws), and normalized with the **same mean/std as `train.py`** (0.1307 / 0.3081, duplicated as constants in both files — if you change normalization in one, update the other).
+- [app.py](app.py) — tkinter canvas app. Mouse strokes are drawn both on the visible `Canvas` and in parallel onto an off-screen PIL `Image` (white background, black strokes) so the same drawing can be preprocessed for the model. On predict, the PIL image is downsampled to 28×28, colors inverted (MNIST digits are white-on-black, opposite of what the user draws), and normalized with the **same mean/std as `train.py`** (0.1307 / 0.3081, duplicated as constants in both files — if you change normalization in one, update the other).
 
 `mnist_cnn.pt` is a `state_dict` only (not a full pickled model), so any loader must construct `MnistCNN()` first and call `load_state_dict`.
