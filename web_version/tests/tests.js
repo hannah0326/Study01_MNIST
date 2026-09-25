@@ -85,6 +85,21 @@
     window.테스트_결과 = { 통과, 실패: 실패_목록.length, 실패_목록 };
   }
 
+  /** window.기준_데이터의 배열 속성을 안전하게 꺼낸다. reference.js가 로드되지 않아도 예외 없이 빈 배열을 준다 */
+  function 기준_사례(속성) {
+    return (window.기준_데이터 && Array.isArray(window.기준_데이터[속성])) ? window.기준_데이터[속성] : [];
+  }
+
+  // ---------- 필수 스크립트 로드 확인 ----------
+  테스트("필수 스크립트가 모두 로드되었다 (weights.js, preprocess.js, model.js, reference.js)", () => {
+    const 누락 = [];
+    if (!window.MNIST_가중치) 누락.push("weights.js (window.MNIST_가중치)");
+    if (!window.전처리) 누락.push("preprocess.js (window.전처리)");
+    if (!window.모델) 누락.push("model.js (window.모델)");
+    if (!window.기준_데이터) 누락.push("reference.js (window.기준_데이터)");
+    확인(누락.length === 0, `다음 스크립트를 불러오지 못함: ${누락.join(", ")}`);
+  });
+
   // ---------- 전처리 (preprocess.js) ----------
   테스트("파이썬_반올림은 .5를 짝수 쪽으로 반올림한다", () => {
     const { 파이썬_반올림 } = window.전처리;
@@ -139,7 +154,7 @@
     근사_배열([입력[0], 입력[1]], [(1 - 0.1307) / 0.3081, -0.1307 / 0.3081], 1e-6, "값");
   });
 
-  for (const 사례 of window.기준_데이터.전처리_사례) {
+  for (const 사례 of 기준_사례("전처리_사례")) {
     테스트(`전처리 대조: ${사례.이름}`, () => {
       const 결과 = window.전처리.모델_입력_이미지_만들기(base64_바이트(사례.입력), 280, 280);
       확인(결과 !== null, "결과가 null");
@@ -223,7 +238,7 @@
     같음(신경망.가중치["fc1.weight"].length, 128 * 3136, "fc1.weight 길이");
   });
 
-  for (const 사례 of window.기준_데이터.추론_사례) {
+  for (const 사례 of 기준_사례("추론_사례")) {
     테스트(`추론 대조: ${사례.이름} (정답 ${사례.정답})`, () => {
       const 신경망 = window.모델.모델_만들기(window.MNIST_가중치);
       const 로짓 = 신경망.로짓_계산(window.전처리.정규화된_입력(base64_바이트(사례.입력)));
@@ -233,7 +248,7 @@
     });
   }
 
-  for (const 사례 of window.기준_데이터.전처리_사례) {
+  for (const 사례 of 기준_사례("전처리_사례")) {
     테스트(`전처리→추론 전체 흐름: ${사례.이름}`, () => {
       const 신경망 = window.모델.모델_만들기(window.MNIST_가중치);
       const 이미지 = window.전처리.모델_입력_이미지_만들기(base64_바이트(사례.입력), 280, 280);
