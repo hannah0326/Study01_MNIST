@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MNIST 손글씨 숫자 인식 프로젝트. PyTorch CNN으로 MNIST를 학습하고, tkinter GUI로 사용자가 직접 그린 숫자를 인식한다. All code and comments in this repo are written in Korean — keep new code and comments in Korean to match.
 
-Not a git repository. No package manifest (`requirements.txt`/`pyproject.toml`) — dependencies were installed directly via pip.
+Remote: https://github.com/hannah0326/Study01_MNIST (public, `master`); `index.html` is served via GitHub Pages. No package manifest (`requirements.txt`/`pyproject.toml`) — dependencies were installed directly via pip.
 
 ## Commands
 
