@@ -15,7 +15,7 @@
     <div class="배치">
       <section>
         <h2>여기에 숫자를 써 주세요 (0~9)</h2>
-        <canvas id="캔버스" width="280" height="280"></canvas>
+        <canvas id="캔버스" width="280" height="280" role="img" aria-label="숫자를 그리는 캔버스"></canvas>
         <div class="버튼_줄">
           <button id="인식_버튼" type="button">인식하기</button>
           <button id="지우기_버튼" type="button">지우기</button>
@@ -25,12 +25,12 @@
       <section class="결과">
         <h2>인식 결과</h2>
         <div id="결과_숫자" class="결과_숫자">-</div>
-        <div id="확신도" class="보조 가운데">확신도: -</div>
-        <p id="오류" class="오류" hidden></p>
+        <div id="확신도" class="보조 가운데">모델을 불러오는 중...</div>
+        <p id="오류" class="오류" role="alert" hidden></p>
         <h2>숫자별 확률</h2>
         <ol id="막대_목록" class="막대_목록"></ol>
         <h2>모델 입력 (28x28)</h2>
-        <canvas id="미리보기" width="28" height="28"></canvas>
+        <canvas id="미리보기" width="28" height="28" aria-label="모델에 실제로 입력되는 28x28 전처리 결과"></canvas>
       </section>
     </div>
     <p><a href="../index.html">← 프로젝트 소개로 돌아가기</a></p>

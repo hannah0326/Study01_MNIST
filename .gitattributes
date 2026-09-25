@@ -1,0 +1,4 @@
+# 작성: 2026-09-26 02:53 KST
+# 자동 생성 파일: diff에서 제외하고 GitHub 언어 통계에도 넣지 않는다.
+web_version/weights.js -diff linguist-generated=true
+web_version/tests/reference.js -diff linguist-generated=true
