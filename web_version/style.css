@@ -1,0 +1,40 @@
+/* 작성: 2026-09-26 02:32 KST */
+/* 색과 배치는 desktop_version/app.py 화면과 맞춘다 */
+body { font-family: "맑은 고딕", sans-serif; margin: 0; background: #f0f0f0; color: #111827; }
+header { padding: 16px 24px; background: #24292f; color: #fff; font-size: 1.25rem; font-weight: bold; }
+main { padding: 24px; max-width: 760px; margin: 0 auto; }
+h1 { margin: 0 0 4px; font-size: 1.5rem; }
+h1 small { font-size: 0.9rem; font-weight: normal; color: #6b7280; }
+h2 { margin: 16px 0 6px; font-size: 1rem; }
+section > h2:first-child { margin-top: 0; }
+.보조 { color: #6b7280; font-size: 0.9rem; }
+.가운데 { text-align: center; }
+
+.배치 { display: flex; gap: 32px; align-items: flex-start; margin-top: 16px; }
+.결과 { flex: 1; min-width: 0; }
+
+#캔버스 { display: block; width: 280px; max-width: 100%; background: #000; border: 1px solid #9ca3af; cursor: crosshair; touch-action: none; }
+#캔버스.비활성 { opacity: 0.5; cursor: not-allowed; }
+.버튼_줄 { display: flex; justify-content: space-between; max-width: 282px; margin-top: 10px; }
+button { font: inherit; padding: 6px 20px; border: 1px solid #9ca3af; border-radius: 4px; background: #fff; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.결과_숫자 { font-size: 4.5rem; font-weight: bold; line-height: 1.1; text-align: center; color: #1e293b; }
+.오류 { color: #b91c1c; font-size: 0.9rem; }
+
+.막대_목록 { list-style: none; margin: 0; padding: 6px; background: #fff; border: 1px solid #d1d5db; }
+.막대_목록 li { display: flex; align-items: center; gap: 8px; margin: 2px 0; font-size: 0.85rem; }
+.막대_목록 .숫자 { width: 1em; }
+.막대_목록 .막대 { flex: 1; height: 14px; background: #eef0f3; }
+.막대_목록 .채움 { display: block; width: 0; height: 100%; background: #d1d5db; }
+.막대_목록 .채움.강조 { background: #2563eb; }
+.막대_목록 .퍼센트 { width: 3.5em; text-align: right; color: #6b7280; }
+
+#미리보기 { display: block; width: 112px; height: 112px; background: #000; image-rendering: pixelated; }
+
+/* 휴대폰처럼 좁은 화면에서는 위아래로 배치한다 */
+@media (max-width: 640px) {
+  main { padding: 16px; }
+  .배치 { flex-direction: column; gap: 16px; }
+  .결과 { width: 100%; }
+}

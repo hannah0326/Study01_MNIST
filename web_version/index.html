@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<!-- 작성: 2026-09-26 02:32 KST -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>손글씨 숫자 인식기 (웹 버전)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>2601951 신한나</header>
+  <main>
+    <h1>손글씨 숫자 인식기 <small>웹 버전</small></h1>
+    <p class="보조">PyTorch로 학습한 CNN을 외부 라이브러리 없이 브라우저에서 순수 자바스크립트로 실행합니다.</p>
+    <div class="배치">
+      <section>
+        <h2>여기에 숫자를 써 주세요 (0~9)</h2>
+        <canvas id="캔버스" width="280" height="280"></canvas>
+        <div class="버튼_줄">
+          <button id="인식_버튼" type="button">인식하기</button>
+          <button id="지우기_버튼" type="button">지우기</button>
+        </div>
+        <p class="보조">펜을 떼면 자동으로 인식합니다.</p>
+      </section>
+      <section class="결과">
+        <h2>인식 결과</h2>
+        <div id="결과_숫자" class="결과_숫자">-</div>
+        <div id="확신도" class="보조 가운데">확신도: -</div>
+        <p id="오류" class="오류" hidden></p>
+        <h2>숫자별 확률</h2>
+        <ol id="막대_목록" class="막대_목록"></ol>
+        <h2>모델 입력 (28x28)</h2>
+        <canvas id="미리보기" width="28" height="28"></canvas>
+      </section>
+    </div>
+    <p><a href="../">← 프로젝트 소개로 돌아가기</a></p>
+  </main>
+  <script src="weights.js"></script>
+  <script src="preprocess.js"></script>
+  <script src="model.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
