@@ -22,6 +22,7 @@
   const 막대들 = [];              // 숫자별 {채움, 퍼센트} 요소
   let 신경망 = null;              // 가중치를 불러오지 못하면 null로 남는다
   let 이전_좌표 = null;           // 그리는 중이 아니면 null
+  let 활성_포인터 = null;         // 현재 그리는 중인 포인터 id (멀티터치로 인한 오작동 방지)
 
   // ---------- 화면 구성 ----------
   function 막대_만들기() {
@@ -98,20 +99,26 @@
 
   function 펜_누르기(이벤트) {
     if (!신경망) return;
+    // 이미 다른 손가락으로 그리는 중이거나, 보조 손가락(멀티터치)이거나, 마우스 왼쪽 버튼이 아니면 무시한다
+    if (활성_포인터 !== null || !이벤트.isPrimary || 이벤트.button !== 0) return;
     이벤트.preventDefault();
+    활성_포인터 = 이벤트.pointerId;
     캔버스.setPointerCapture(이벤트.pointerId);
     이전_좌표 = 캔버스_좌표(이벤트);
     점_찍기(이전_좌표);
   }
 
   function 펜_움직이기(이벤트) {
+    if (이벤트.pointerId !== 활성_포인터) return;
     if (이전_좌표 === null) return;
     const 지금 = 캔버스_좌표(이벤트);
     선_긋기(이전_좌표, 지금);
     이전_좌표 = 지금;
   }
 
-  function 펜_떼기() {
+  function 펜_떼기(이벤트) {
+    if (이벤트.pointerId !== 활성_포인터) return;
+    활성_포인터 = null;
     if (이전_좌표 === null) return;
     이전_좌표 = null;
     인식하기();
