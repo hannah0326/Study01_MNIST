@@ -6,6 +6,8 @@
 인식 결과, 확신도, 숫자별 확률, 모델에 실제로 들어가는 28x28 입력 이미지를 함께 보여준다.
 """
 
+from pathlib import Path
+
 import tkinter as tk
 from tkinter import messagebox
 
@@ -16,7 +18,7 @@ from PIL import Image, ImageDraw, ImageTk
 from model import MnistCNN
 from preprocess import 모델_입력_이미지_만들기, 텐서로_변환
 
-가중치_경로 = "mnist_cnn.pt"
+가중치_경로 = Path(__file__).resolve().parent / "mnist_cnn.pt"   # 실행 위치와 상관없이 이 파일 옆의 가중치를 쓴다
 캔버스_크기 = 280
 펜_굵기 = 22
 미리보기_크기 = 112       # 28x28 모델 입력을 4배로 확대해서 보여준다

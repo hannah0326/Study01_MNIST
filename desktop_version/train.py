@@ -2,6 +2,7 @@
 """MNIST 데이터셋으로 CNN 모델을 학습하고 가중치를 mnist_cnn.pt로 저장하는 스크립트"""
 
 import random
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -17,7 +18,9 @@ from preprocess import 정규화_평균, 정규화_표준편차
 배치_크기 = 128
 에폭_수 = 15
 학습률 = 0.002
-가중치_저장_경로 = "mnist_cnn.pt"
+기준_폴더 = Path(__file__).resolve().parent   # 실행 위치와 상관없이 이 파일이 있는 폴더를 기준으로 한다
+가중치_저장_경로 = 기준_폴더 / "mnist_cnn.pt"
+데이터_폴더 = 기준_폴더 / "data"
 
 
 class 무작위_굵게:
@@ -47,8 +50,8 @@ def 데이터로더_준비():
         transforms.Normalize((정규화_평균,), (정규화_표준편차,)),
     ])
 
-    학습_데이터셋 = datasets.MNIST(root="./data", train=True, download=True, transform=학습_변환)
-    테스트_데이터셋 = datasets.MNIST(root="./data", train=False, download=True, transform=테스트_변환)
+    학습_데이터셋 = datasets.MNIST(root=데이터_폴더, train=True, download=True, transform=학습_변환)
+    테스트_데이터셋 = datasets.MNIST(root=데이터_폴더, train=False, download=True, transform=테스트_변환)
 
     학습_로더 = DataLoader(학습_데이터셋, batch_size=배치_크기, shuffle=True)
     테스트_로더 = DataLoader(테스트_데이터셋, batch_size=배치_크기, shuffle=False)
